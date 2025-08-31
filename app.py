@@ -1,19 +1,13 @@
 import gradio as gr
-import torch
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 
-MODEL_NAME = "google/flan-t5-small"
-MODEL_WEIGHTS_PATH = "model_weights.pth"
-MODEL_SAVE_PATH = "model"
+MODEL_SAVE_PATH = "context-aware-qa"
 
 # Load tokenizer
 tokenizer = AutoTokenizer.from_pretrained(MODEL_SAVE_PATH)
 
 # Load model + weights
-model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME)
-state_dict = torch.load(MODEL_WEIGHTS_PATH, map_location=torch.device("cpu"))
-model.load_state_dict(state_dict)
-model.eval()
+model = AutoModelForSeq2SeqLM.from_pretrained(MODEL_SAVE_PATH)
 
 def generate_reasoning_answer(question, context):
     input_text = f"answer the question: {question} context: {context}"
@@ -40,17 +34,33 @@ examples = [
     ]
 ]
 
-# Gradio interface
-iface = gr.Interface(
-    fn=generate_reasoning_answer,
-    inputs=[
-        gr.Textbox(lines=2, label="Question", placeholder="Ask your question here..."),
-        gr.Textbox(lines=10, label="Context", placeholder="Paste relevant context or document text here...")
-    ],
-    outputs=gr.Textbox(label="Answer"),
-    title="Conversational QA",
-    description="Ask a question and provide the relevant context. The model will generate an answer based on the context.",
-    examples=examples
-)
+with gr.Blocks(title="Context Aware QA") as demo:
+    gr.Markdown("## Context Aware QA")
+    gr.Markdown("Ask a question and provide the relevant context. "
+                "The model will generate an answer based on the context.")
 
-iface.launch()
+    with gr.Row():
+        with gr.Column(scale=1):
+            question = gr.Textbox(
+                lines=2, label="Question", placeholder="Ask your question here..."
+            )
+            context = gr.Textbox(
+                lines=10, label="Context", placeholder="Paste relevant context or document text here..."
+            )
+            submit_btn = gr.Button("Get Answer")
+
+        with gr.Column(scale=1):
+            answer = gr.Textbox(label="Answer")
+
+    # Add examples
+    gr.Examples(
+        examples=examples,
+        inputs=[question, context],
+        outputs=[answer],
+        fn=generate_reasoning_answer
+    )
+
+    # Button click handler
+    submit_btn.click(fn=generate_reasoning_answer, inputs=[question, context], outputs=[answer])
+
+demo.launch(share=False)
